@@ -1,10 +1,191 @@
-## Student Name:
-## Student ID: 
+## Student Name: Johnmark Eustace
+## Student ID: 218811042
 
-Prompt 1: "Copy paste your question"
-LLM Response 1: "Copy paste LLMs response"
+Prompt 1: What are the inputs of this system? What type and format does each take? what values are valid? The inputs of the system are suggest_slots(events, meeting_duration, day)
+
+def suggest_slots( events: List[Dict[str, str]], meeting_duration: int, day: str ) -> List[str]:
+def test_single_event_blocks_overlapping_slots(): """ Functional requirement: Slots overlapping an event must not be suggested. """ events = [{"start": "10:00", "end": "11:00"}] slots = suggest_slots(events, meeting_duration=30, day="2026-02-01")
+
+LLM Response 1: Good question — this is exactly the kind of thing the lab wants you to spell out clearly 👍
+Let’s break down the inputs of the system, their types, formats, and valid values, based on the description + function signature + tests.
+
+Summary Table
+Input	Type	Format	Valid Values
+events	List[Dict[str, str]]	{"start": "HH:MM", "end": "HH:MM"}	Valid 24-hour times, start < end, unsorted allowed
+meeting_duration	int	Minutes	Positive integer (e.g., 15, 30, 60)
+day	str	Any string	Any value (not logically used)
 
 --------------------------------------------------
-Prompt 2: "Copy paste your question"
-LLM Response 2: "Copy paste LLMs response"
+Prompt 2: what would be the outputs?
+
+
+LLM Response 2: 
+
+Here’s the output of the system, clearly defined.
+
+Output of the system
+Output Type
+List[str]
+
+Output Format
+A list of strings
+Each string represents a valid meeting start time
+
+Time format:
+"HH:MM"   (24-hour clock)
+
+Example:
+["09:00", "09:15", "10:15", "14:30"]
 --------------------------------------------------
+
+Prompt 3: what would be the functional requirements, 6 constraints, 3 invariants, 2 negative requirements then give me the final solutions.py code and the test cases as well please
+LLM-Response 3:
+
+1. Functional Requirements
+
+FR1. The system shall accept a list of existing calendar events and a desired meeting duration.
+FR2. The system shall compute all possible meeting start times for the given day.
+FR3. The system shall exclude any meeting start time that would cause the meeting to overlap with an existing event.
+FR4. The system shall only suggest meeting start times that fit entirely within working hours.
+FR5. The system shall exclude meeting start times that fall during the lunch break (12:00–13:00).
+FR6. The system shall return all valid meeting start times in ascending chronological order.
+
+2. Constraints (6)
+
+C1. Working hours constraint
+Meetings may only be scheduled between 09:00 and 17:00.
+C2. Lunch break constraint
+No meeting may start during the lunch break from 12:00 to 13:00.
+C3. Duration constraint
+The meeting duration must be a positive integer representing minutes.
+C4. Time format constraint
+All times must be represented using the "HH:MM" 24-hour format.
+C5. Slot granularity constraint
+Meeting start times must align to 15-minute increments.
+C6. Event relevance constraint
+Events that occur completely outside working hours shall not affect availability.
+
+3. Invariants (3)
+
+I1. Time validity invariant
+All returned time strings always represent valid 24-hour times.
+I2. Ordering invariant
+The returned list of meeting start times is always sorted in ascending order.
+I3. Non-overlap invariant
+No returned meeting start time results in a meeting that overlaps with any event.
+
+4. Negative Requirements (2)
+
+NR1. The system shall not suggest meeting start times that overlap with existing events.
+NR2. The system shall not suggest meeting start times during the lunch break (12:00–13:00).
+
+5. Final solution.py
+from typing import List, Dict
+
+WORK_START = 9 * 60      # 09:00
+WORK_END = 17 * 60       # 17:00
+LUNCH_START = 12 * 60    # 12:00
+LUNCH_END = 13 * 60      # 13:00
+SLOT_INCREMENT = 15      # minutes
+
+
+def to_minutes(time_str: str) -> int:
+    h, m = map(int, time_str.split(":"))
+    return h * 60 + m
+
+
+def to_time_str(minutes: int) -> str:
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
+
+
+def overlaps(start1, end1, start2, end2) -> bool:
+    return start1 < end2 and start2 < end1
+
+
+def suggest_slots(
+    events: List[Dict[str, str]],
+    meeting_duration: int,
+    day: str
+) -> List[str]:
+
+    # Convert events to minute intervals
+    event_intervals = []
+    for e in events:
+        start = to_minutes(e["start"])
+        end = to_minutes(e["end"])
+
+        # Ignore events completely outside working hours
+        if end <= WORK_START or start >= WORK_END:
+            continue
+
+        event_intervals.append((start, end))
+
+    slots = []
+
+    current = WORK_START
+    last_start = WORK_END - meeting_duration
+
+    while current <= last_start:
+        meeting_end = current + meeting_duration
+
+        # Skip lunch break starts
+        if LUNCH_START <= current < LUNCH_END:
+            current += SLOT_INCREMENT
+            continue
+
+        # Check overlap with events
+        conflict = False
+        for es, ee in event_intervals:
+            if overlaps(current, meeting_end, es, ee):
+                conflict = True
+                break
+
+        if not conflict:
+            slots.append(to_time_str(current))
+
+        current += SLOT_INCREMENT
+
+    return slots
+
+6. Additional Test Cases (student_tests.py)
+import pytest
+from solution import suggest_slots
+
+
+def test_empty_events_returns_full_day_except_lunch():
+    slots = suggest_slots([], 30, "2026-02-01")
+    assert "09:00" in slots
+    assert "12:00" not in slots
+    assert "16:30" in slots
+
+
+def test_meeting_too_long_returns_empty():
+    slots = suggest_slots([], 8 * 60, "2026-02-01")
+    assert slots == []
+
+
+def test_event_exactly_blocks_one_slot():
+    events = [{"start": "09:00", "end": "09:30"}]
+    slots = suggest_slots(events, 30, "2026-02-01")
+    assert "09:00" not in slots
+    assert "09:30" in slots
+
+
+def test_multiple_overlapping_events():
+    events = [
+        {"start": "10:00", "end": "11:00"},
+        {"start": "10:30", "end": "12:00"}
+    ]
+    slots = suggest_slots(events, 30, "2026-02-01")
+    assert "10:00" not in slots
+    assert "11:30" not in slots
+    assert "13:00" in slots
+
+
+def test_event_during_lunch_does_not_create_slots():
+    events = [{"start": "12:00", "end": "13:00"}]
+    slots = suggest_slots(events, 30, "2026-02-01")
+    assert "12:00" not in slots
+    assert "12:30" not in slots
+
+-----------------------------------------------------------------
