@@ -9,7 +9,8 @@ The hidden test suite used for grading contains additional edge cases and will n
 available to students.
 """
 import pytest
-from solution import suggest_slots
+from src.solution import suggest_slots
+
 
 
 def test_single_event_blocks_overlapping_slots():
