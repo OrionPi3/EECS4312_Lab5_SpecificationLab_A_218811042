@@ -1,25 +1,17 @@
-## Student Name:
-## Student ID: 
+#Student Name: Johnmark Eustace
+#Student ID: 218811042
 
-"""
-Stub file for the meeting slot suggestion exercise.
-
-Implement the function `suggest_slots` to return a list of valid meeting start times
-on a given day, taking into account working hours, and possible specific constraints. See the lab handout
-for full requirements.
-"""
-from typing import List, Dict
-
-<<<<<<< Updated upstream
-=======
 import sys
 import os
 
-WORK_START = 9 * 60      # 09:00
-WORK_END = 17 * 60       # 17:00
-LUNCH_START = 12 * 60    # 12:00
-LUNCH_END = 13 * 60      # 13:00
-SLOT_INCREMENT = 15      # minutes
+from typing import List, Dict
+
+WORK_START = 9 * 60       # 09:00
+WORK_END = 17 * 60        # 17:00
+FRIDAY_END = 15 * 60      # 15:00
+LUNCH_START = 12 * 60     # 12:00
+LUNCH_END = 13 * 60       # 13:00
+SLOT_INCREMENT = 15       # minutes
 
 
 def to_minutes(time_str: str) -> int:
@@ -35,22 +27,52 @@ def overlaps(start1, end1, start2, end2) -> bool:
     return start1 < end2 and start2 < end1
 
 
->>>>>>> Stashed changes
 def suggest_slots(
     events: List[Dict[str, str]],
     meeting_duration: int,
     day: str
 ) -> List[str]:
-    """
-    Suggest possible meeting start times for a given day.
 
-    Args:
-        events: List of dicts with keys {"start": "HH:MM", "end": "HH:MM"}
-        meeting_duration: Desired meeting length in minutes
-        day: Three-letter day abbreviation (e.g., "Mon", "Tue", ... "Fri")
+    # Determine end of working day
+    effective_work_end = WORK_END
+    if day.lower() == "friday":
+        effective_work_end = FRIDAY_END
 
-    Returns:
-        List of valid start times as "HH:MM" sorted ascending
-    """
-    # TODO: Implement this function
-    raise NotImplementedError("suggest_slots function has not been implemented yet")
+    # Convert events to minute intervals
+    event_intervals = []
+    for e in events:
+        start = to_minutes(e["start"])
+        end = to_minutes(e["end"])
+
+        # Ignore events completely outside working hours
+        if end <= WORK_START or start >= effective_work_end:
+            continue
+
+        event_intervals.append((start, end))
+
+    slots = []
+
+    current = WORK_START
+    last_start = effective_work_end - meeting_duration
+
+    while current <= last_start:
+        meeting_end = current + meeting_duration
+
+        # Skip lunch break starts
+        if LUNCH_START <= current < LUNCH_END:
+            current += SLOT_INCREMENT
+            continue
+
+        # Check overlap with events
+        conflict = False
+        for es, ee in event_intervals:
+            if overlaps(current, meeting_end, es, ee):
+                conflict = True
+                break
+
+        if not conflict:
+            slots.append(to_time_str(current))
+
+        current += SLOT_INCREMENT
+
+    return slots
