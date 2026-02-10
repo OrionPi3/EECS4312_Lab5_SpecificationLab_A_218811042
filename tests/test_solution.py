@@ -11,7 +11,6 @@ available to students.
 import pytest
 from solution import suggest_slots
 
-
 def test_single_event_blocks_overlapping_slots():
     """
     Functional requirement:
